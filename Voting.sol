@@ -10,17 +10,20 @@ import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contr
  */
 contract Voting {
 
+    //Structure to implement a voter
     struct Voter {
         bool isRegistered;
         bool hasVoted;
         uint votedProposalId;
     }
 
+    //Structure to implement a proposal voted by the voters after
     struct Proposal {
         string description;
         uint voteCount;
     }
 
+    //implementation of the different states during the process
     enum WorkflowStatus {
         RegisteringVoters,
         ProposalsRegistrationStarted,
@@ -30,8 +33,10 @@ contract Voting {
         VotesTallied
     }
 
+    //the proposal which has the more votes
     uint public winningProposalID;
 
+    //the different events of the application
     event VoterRegistered(address voterAddress);
     event ProposalsRegistrationStarted();
     event ProposalsRegistrationEnded();
