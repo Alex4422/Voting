@@ -24,17 +24,22 @@ contract Voting {
     }
 
     //implementation of the different states during the process
-    enum WorkflowStatus {
-        RegisteringVoters,
-        ProposalsRegistrationStarted,
-        ProposalsRegistrationEnded,
-        VotingSessionStarted,
-        VotingSessionEnded,
-        VotesTallied
+    enum WorkflowStatus {RegisteringVoters, ProposalsRegistrationStarted,
+        ProposalsRegistrationEnded, VotingSessionStarted, VotingSessionEnded, VotesTallied
     }
+
+    //The address of the admin of the contract
+    address public ownerOfVotes;
 
     //the proposal which has the more votes
     uint public winningProposalID;
+
+    //mapping
+    mapping (address => bool) public voterWhitelist;
+    //mapping(address => WorkflowStatus) public workflowListStatus;
+    //mapping(address => WorkflowStatus) state;
+
+
 
     //the different events of the application
     event VoterRegistered(address voterAddress);
@@ -48,7 +53,75 @@ contract Voting {
     event WorkflowStatusChange(WorkflowStatus previousStatus, WorkflowStatus
     newStatus);
 
-    function Voting(){
 
+    modifier onlyOwnerOfVotes{
+        require(msg.sender, "Only the owner for that!");
+        _;
+    }
+
+    modifier onlyElectors{
+        require(msg.sender, "only the electors for that");
+        _;
+    }
+
+    constructor() public{
+        ownerOfVotes = msg.sender;
+        voterWhitelist[msg.sender] = true;
+    }
+
+    /**
+        element: function
+        title: registerVoter
+        description: registers a voter in a whitelist
+    */
+    function registerVoter(address _voterAddress) public onlyOwnerOfVotes{
+        require(voterWhitelist[_voterAddress] != WorkflowStatus.RegisteringVoters,"Voter already registered");
+        voterWhitelist[_voterAddress] = WorkflowStatus.RegisteringVoters;
+
+        emit VoterRegistered(_voterAddress);
+    }
+
+    /**
+        element: function
+        title: startProposalRegistrationSession
+        description: start a new session of Registration proposal
+    */
+    function startProposalRegistrationSession(address _address) public onlyOwnerOfVotes{
+
+        require(workflowListStatus[_address] == WorkflowStatus.RegisteringVoters,"The previous status is not correct to do this step");
+
+        //WorkflowStatus status = WorkflowStatus.RegisteringVoters;
+        WorkflowStatus status = WorkflowStatus.ProposalsRegistrationStarted;
+
+        emit ProposalsRegistrationStarted();
+        emit WorkflowStatusChange(WorkflowStatus.RegisteringVoters, status);
+    }
+
+    /**
+        element: function
+        title: registerProposal
+        description: register a new proposal
+    */
+    function registerProposal(uint _proposalId) public onlyElectors{
+
+        //We don't change the value of the status here because we are registering the proposals so the
+        //session is not finished
+        emit ProposalRegistered( _proposalId);
+
+        emit WorkflowStatusChange(WorkflowStatus.ProposalsRegistrationStarted,status);
+    }
+
+    /**
+        element: function
+        title: endProposalRegistrationSession
+        description: end a session of registration of a new proposal
+    */
+    function endProposalRegistrationSession(address _address) public onlyOwnerOfVotes{
+
+        WorkflowStatus status = WorkflowStatus.ProposalsRegistrationStarted;
+        status = WorkflowStatus.ProposalsRegistrationEnded;
+
+        emit ProposalsRegistrationEnded();
+        emit WorkflowStatusChange(WorkflowStatus.ProposalsRegistrationStarted, status);
     }
 }
