@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.6.11;
+pragma solidity 0.8.4;
 
-//problem of compiler
-//import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/Ownable.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/Ownable.sol";
 
 /**
  * @title Voting
  * @dev Manages a voting system
  */
-contract Voting {
+contract Voting is Ownable{
+
 
     //Structure to implement a voter
     struct Voter {
@@ -18,27 +18,23 @@ contract Voting {
         uint votedProposalId;
     }
 
-    //Structure to implement a proposal voted by the voters after
+    //Structure to implement a proposal voted by the voters 
     struct Proposal {
         string description;
         uint voteCount;
     }
 
+    //mapping
+    mapping (address => bool) public voterWhitelist;
+    mapping (uint => Proposal) public proposals;
+    mapping (address => Voter) public voters;
+    
+    
+    
     //implementation of the different states during the process
     enum WorkflowStatus {RegisteringVoters, ProposalsRegistrationStarted,
         ProposalsRegistrationEnded, VotingSessionStarted, VotingSessionEnded, VotesTallied
     }
-
-
-    //The address of the admin of the contract
-    address public ownerOfVotes;
-
-    //the proposal which has the more votes
-    uint public winningProposalID;
-
-    //mapping
-    mapping (address => bool) public voterWhitelist;
-    mapping(address => WorkflowStatus) public workflowListStatus;
 
     //the different events of the application
     event VoterRegistered(address voterAddress);
@@ -51,78 +47,135 @@ contract Voting {
     event VotesTallied();
     event WorkflowStatusChange(WorkflowStatus previousStatus, WorkflowStatus
     newStatus);
+    
+    //the proposal which has the more votes
+    uint public winningProposalID;
+    
+    //The address of the admin of the contract
+    address public ownerOfVotes;
 
-    modifier onlyOwnerOfVotes(){
-        require(msg.sender == ownerOfVotes, "Only the owner for that!");
-        _;
-    }
-
-    modifier onlyElectors(){
-        require(msg.sender != ownerOfVotes, "only the electors for that");
-        _;
-    }
-
+    //the variable status contains the state of the worflow where I am
+    WorkflowStatus status = WorkflowStatus.RegisteringVoters;
+    
     constructor() public{
         ownerOfVotes = msg.sender;
-        voterWhitelist[msg.sender] = true;
+        //voterWhitelist[msg.sender] = true;
     }
-
-    /**
+    
+    //modifier
+    modifier isRightWorkflowStatus(WorkflowStatus _currentStatus, WorkflowStatus _expectedStatus){
+        require(_currentStatus == _expectedStatus, "This workflow status is not the one expected");
+        _;
+    }
+    
+    
+     /**
         element: function
         title: registerVoter
-        description: registers a voter in a whitelist
+        description: registers a voter in a whitelist - The voting administrator 
+         registers a white list of voters identified by their Ethereum address.
     */
-    function registerVoter(address _voterAddress) public onlyOwnerOfVotes{
-        //require(voterWhitelist[_voterAddress] != WorkflowStatus.RegisteringVoters,"Voter already registered");
-        //voterWhitelist[_voterAddress] = WorkflowStatus.RegisteringVoters;
-
+    function registerVoter(address _voterAddress) public onlyOwner{
+       
+        voterWhitelist[_voterAddress] = true;
+        voters[_voterAddress].isRegistered = true;
+        
         emit VoterRegistered(_voterAddress);
+        
+        //only to test
+        //require(voterWhitelist[_voterAddress] == true, 'RegisteringVoters sucessful');
+        
     }
-
 
     /**
        element: function
        title: startProposalRegistrationSession
-       description: start a new session of Registration proposal
-   */
-    function startProposalRegistrationSession(address _address) public onlyOwnerOfVotes{
-
-        require(workflowListStatus[_address] == WorkflowStatus.RegisteringVoters,"The previous status is not correct to do this step");
-
-        //WorkflowStatus status = WorkflowStatus.RegisteringVoters;
-        WorkflowStatus status = WorkflowStatus.ProposalsRegistrationStarted;
-
-        emit ProposalsRegistrationStarted();
-        emit WorkflowStatusChange(WorkflowStatus.RegisteringVoters, status);
-    }
-
-    /**
-        element: function
-        title: registerProposal
-        description: register a new proposal
+       description: start a new session of Registration proposal - The voting 
+        administrator begins the proposal registration session.
     */
-    function registerProposal(uint _proposalId) public onlyElectors{
-
-        WorkflowStatus status = WorkflowStatus.RegisteringVoters;
-        //We don't change the value of the status here because we are registering the proposals so the
-        //session is not finished
-        emit ProposalRegistered( _proposalId);
-
-        emit WorkflowStatusChange(WorkflowStatus.ProposalsRegistrationStarted,status);
+    function startProposalRegistrationSession() public 
+     onlyOwner isRightWorkflowStatus(WorkflowStatus.RegisteringVoters, WorkflowStatus.RegisteringVoters) {
+        
+      status = WorkflowStatus.ProposalsRegistrationStarted;
+      
+      emit WorkflowStatusChange(WorkflowStatus.RegisteringVoters, status);
+      emit ProposalsRegistrationStarted();
     }
 
+   
+    /**
+       element: function
+       title: registerProposal
+       description: Registered voters are allowed to register their proposals (only !!) while the registration session is active.
+    */
+    function registerProposal(uint _proposalId, string memory _description ) 
+     isRightWorkflowStatus(WorkflowStatus.ProposalsRegistrationStarted , WorkflowStatus.ProposalsRegistrationStarted) public{
+        
+        //method 2
+        proposals[_proposalId].description = _description;
+        //proposals[_proposalId].voteCount += proposals[_proposalId].voteCount;
+        
+        proposals[_proposalId].voteCount = 0;
+      
+        emit ProposalRegistered(_proposalId);
+      
+    }
+    
     /**
         element: function
         title: endProposalRegistrationSession
-        description: end a session of registration of a new proposal
+        description: end a session of registration of a new proposal - The voting 
+        administrator closes the proposal registration session.
     */
-    function endProposalRegistrationSession(address _address) public onlyOwnerOfVotes{
+    function endProposalRegistrationSession()  
+     onlyOwner isRightWorkflowStatus(WorkflowStatus.ProposalsRegistrationStarted , WorkflowStatus.ProposalsRegistrationStarted) public{
 
-        WorkflowStatus status = WorkflowStatus.ProposalsRegistrationStarted;
         status = WorkflowStatus.ProposalsRegistrationEnded;
 
-        emit ProposalsRegistrationEnded();
         emit WorkflowStatusChange(WorkflowStatus.ProposalsRegistrationStarted, status);
+        emit ProposalsRegistrationEnded();
+    }
+    
+    /**
+        element: function
+        title: VotingSessionStarted
+        description: The voting administrator starts the voting session
+    */
+    function startVotingSession()
+     onlyOwner isRightWorkflowStatus(WorkflowStatus.ProposalsRegistrationEnded, WorkflowStatus.ProposalsRegistrationEnded) public{
+
+        status = WorkflowStatus.VotingSessionStarted;
+
+        emit WorkflowStatusChange(WorkflowStatus.ProposalsRegistrationEnded, status);
+        emit VotingSessionStarted();
+    }
+    
+    
+    /**
+        element: function
+        title: doTheVote
+        description: increments the voteCount of 1 for the proposal voted by the person
+    */
+    function doTheVote(address _voter, uint _proposalId)
+     isRightWorkflowStatus(WorkflowStatus.VotingSessionStarted, WorkflowStatus.VotingSessionStarted) public{
+
+        voters[_voter].hasVoted = true;
+        proposals[_proposalId].voteCount += proposals[_proposalId].voteCount;
+    
+    }
+        
+    /**
+        element: function
+        title: EndVotingSession
+        description: close the session of vote
+    */
+    function EndVotingSession()
+        onlyOwner isRightWorkflowStatus(WorkflowStatus.VotingSessionStarted, WorkflowStatus.VotingSessionStarted) public{
+    
+        status = WorkflowStatus.VotingSessionEnded;
+        
+        emit WorkflowStatusChange(WorkflowStatus.VotingSessionStarted, status);
+        emit VotingSessionEnded();
     }
 
 }
