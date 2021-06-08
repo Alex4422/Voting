@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0
-
 pragma solidity 0.8.4;
 
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/Ownable.sol";
@@ -9,7 +7,6 @@ import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contr
  * @dev Manages a voting system
  */
 contract Voting is Ownable{
-
 
     //Structure to implement a voter
     struct Voter {
@@ -25,7 +22,6 @@ contract Voting is Ownable{
     }
 
     //mapping
-    mapping (address => bool) public voterWhitelist;
     mapping (uint => Proposal) public proposals;
     mapping (address => Voter) public voters;
 
@@ -59,35 +55,28 @@ contract Voting is Ownable{
 
     constructor() public{
         ownerOfVotes = msg.sender;
-        //voterWhitelist[msg.sender] = true;
     }
 
     //modifier
-    modifier isRightWorkflowStatus(WorkflowStatus _currentStatus, WorkflowStatus _expectedStatus){
+    modifier isRightWorkflowStatus(WorkflowStatus _expectedStatus){
         require(status == _expectedStatus, "This workflow status is not the one expected");
         _;
     }
-
 
     /**
        element: function
        title: registerVoter
        description: registers a voter in a whitelist - The voting administrator
-        registers a white list of voters identified by their Ethereum address.
-   */
-    function registerVoter(address _voterAddress) public onlyOwner{
+        registers a white list of voters identified by their Ethereum address. Check if we are at
+        the correct status at the beginning of the function
+    */
+    function registerVoter(address _voterAddress) public onlyOwner
+    isRightWorkflowStatus(WorkflowStatus.RegisteringVoters){
 
-        //---> require(...);
-        //---> require(...); le voter is present already? todo
-
-        //voterWhitelist[_voterAddress] = true;
+        //if (voters[_voterAddress].isRegistered == false){
+        require(voters[_voterAddress].isRegistered == false, "The voter is already Registered");
         voters[_voterAddress].isRegistered = true;
-
         emit VoterRegistered(_voterAddress);
-
-        //only to test
-        //require(voterWhitelist[_voterAddress] == true, 'RegisteringVoters sucessful');
-
     }
 
     /**
@@ -97,7 +86,7 @@ contract Voting is Ownable{
         administrator begins the proposal registration session.
     */
     function startProposalRegistrationSession() public
-    onlyOwner isRightWorkflowStatus(WorkflowStatus.RegisteringVoters, WorkflowStatus.RegisteringVoters) {
+    onlyOwner isRightWorkflowStatus(WorkflowStatus.RegisteringVoters) {
 
         status = WorkflowStatus.ProposalsRegistrationStarted;
 
@@ -105,24 +94,21 @@ contract Voting is Ownable{
         emit ProposalsRegistrationStarted();
     }
 
-
     /**
        element: function
        title: registerProposal
        description: Registered voters are allowed to register their proposals (only !!) while the registration session is active.
     */
     function registerProposal(uint _proposalId, string memory _description )
-    isRightWorkflowStatus(WorkflowStatus.ProposalsRegistrationStarted , WorkflowStatus.ProposalsRegistrationStarted) public{
+    isRightWorkflowStatus(WorkflowStatus.ProposalsRegistrationStarted) public{
 
-        //method 2
         proposals[_proposalId].description = _description;
-        //proposals[_proposalId].voteCount += proposals[_proposalId].voteCount;
 
-        proposals[_proposalId].voteCount = 0;  //no need to init
+        //no need to init here, proposals[_proposalId].voteCount = 0;, automatically done
 
         emit ProposalRegistered(_proposalId);
-
     }
+
 
     /**
         element: function
@@ -131,7 +117,7 @@ contract Voting is Ownable{
         administrator closes the proposal registration session.
     */
     function endProposalRegistrationSession()
-    onlyOwner isRightWorkflowStatus(WorkflowStatus.ProposalsRegistrationStarted , WorkflowStatus.ProposalsRegistrationStarted) public{
+    onlyOwner isRightWorkflowStatus(WorkflowStatus.ProposalsRegistrationStarted) public{
 
         status = WorkflowStatus.ProposalsRegistrationEnded;
 
@@ -145,7 +131,7 @@ contract Voting is Ownable{
         description: The voting administrator starts the voting session
     */
     function startVotingSession()
-    onlyOwner isRightWorkflowStatus(WorkflowStatus.ProposalsRegistrationEnded, WorkflowStatus.ProposalsRegistrationEnded) public{
+    onlyOwner isRightWorkflowStatus(WorkflowStatus.ProposalsRegistrationEnded) public{
 
         status = WorkflowStatus.VotingSessionStarted;
 
@@ -153,18 +139,22 @@ contract Voting is Ownable{
         emit VotingSessionStarted();
     }
 
-
     /**
         element: function
         title: doTheVote
         description: increments the voteCount of 1 for the proposal voted by the person
     */
     function doTheVote(address _voter, uint _proposalId)
-    isRightWorkflowStatus(WorkflowStatus.VotingSessionStarted, WorkflowStatus.VotingSessionStarted) public{
+    isRightWorkflowStatus(WorkflowStatus.VotingSessionStarted) public{
+
+        require(voters[_voter].hasVoted == false, "The voter has already Voted");
+
+        // we check if the ID of the proposal exists
+        require(bytes(proposals[_proposalId].description).length != 0, "The ID of the proposal is not found!");
 
         voters[_voter].hasVoted = true;
-        proposals[_proposalId].voteCount += proposals[_proposalId].voteCount;
-
+        proposals[_proposalId].voteCount = proposals[_proposalId].voteCount + 1;
+        voters[_voter].votedProposalId = _proposalId;
     }
 
     /**
@@ -173,12 +163,12 @@ contract Voting is Ownable{
         description: close the session of vote
     */
     function EndVotingSession()
-    onlyOwner isRightWorkflowStatus(WorkflowStatus.VotingSessionStarted, WorkflowStatus.VotingSessionStarted) public{
+    onlyOwner isRightWorkflowStatus(WorkflowStatus.VotingSessionStarted) public{
 
         status = WorkflowStatus.VotingSessionEnded;
 
         emit WorkflowStatusChange(WorkflowStatus.VotingSessionStarted, status);
         emit VotingSessionEnded();
     }
-
 }
+
