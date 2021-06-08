@@ -170,5 +170,38 @@ contract Voting is Ownable{
         emit WorkflowStatusChange(WorkflowStatus.VotingSessionStarted, status);
         emit VotingSessionEnded();
     }
+
+
+    /**
+            element: function
+            title: EndVotingSession
+            description: close the session of vote
+        */
+    function tallyVotes() public{
+
+        //we initialise the highest vote
+        uint winningVoteCount = 0;
+
+        //require(bytes(proposals[_proposalId].description).length != 0, "The ID of the proposal is not found!");
+
+        //Donc t'as 2 possibilités pour ton problème,
+        //Soit tu retires ton mapping et tu fais un tableau de proposals, de cette façon t'as pas besoin de conserver un index.
+        //Soit tu gardes ton mapping, et tu dois créer une variable d'état qui conserve l'index maximum et que tu dois incrémenter toi meme dans le code.
+        //Pour ma part la solution la plus otpimale c'est la 1ere
+
+        //We loop on the mapping of proposals
+        //for(uint pos = 0; pos < bytes(proposals[Proposal].description).length; pos++){
+        for(uint pos = 0; pos < maxIndex ; pos++){
+
+
+            //We search the max
+            if (proposals[pos].voteCount > winningVoteCount){
+                winningVoteCount = proposals[pos].voteCount;
+                winningProposalID = pos;
+            }
+        }
+
+    }
+
 }
 
