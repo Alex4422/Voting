@@ -54,7 +54,7 @@ contract Voting is Ownable{
     //The address of the admin of the contract
     address public ownerOfVotes;
 
-    //the variable status contains the state of the worflow where I am
+    //the variable status contains the state of the worflow where I am !!!!!!!!
     WorkflowStatus status = WorkflowStatus.RegisteringVoters;
 
     constructor() public{
@@ -64,7 +64,7 @@ contract Voting is Ownable{
 
     //modifier
     modifier isRightWorkflowStatus(WorkflowStatus _currentStatus, WorkflowStatus _expectedStatus){
-        require(_currentStatus == _expectedStatus, "This workflow status is not the one expected");
+        require(status == _expectedStatus, "This workflow status is not the one expected");
         _;
     }
 
@@ -77,7 +77,10 @@ contract Voting is Ownable{
    */
     function registerVoter(address _voterAddress) public onlyOwner{
 
-        voterWhitelist[_voterAddress] = true;
+        //---> require(...);
+        //---> require(...); le voter is present already? todo
+
+        //voterWhitelist[_voterAddress] = true;
         voters[_voterAddress].isRegistered = true;
 
         emit VoterRegistered(_voterAddress);
@@ -115,7 +118,7 @@ contract Voting is Ownable{
         proposals[_proposalId].description = _description;
         //proposals[_proposalId].voteCount += proposals[_proposalId].voteCount;
 
-        proposals[_proposalId].voteCount = 0;
+        proposals[_proposalId].voteCount = 0;  //no need to init
 
         emit ProposalRegistered(_proposalId);
 
