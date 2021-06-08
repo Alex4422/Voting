@@ -25,8 +25,6 @@ contract Voting is Ownable{
     mapping (uint => Proposal) public proposals;
     mapping (address => Voter) public voters;
 
-
-
     //implementation of the different states during the process
     enum WorkflowStatus {RegisteringVoters, ProposalsRegistrationStarted,
         ProposalsRegistrationEnded, VotingSessionStarted, VotingSessionEnded, VotesTallied
@@ -47,10 +45,13 @@ contract Voting is Ownable{
     //the proposal which has the more votes
     uint public winningProposalID;
 
+    //the maximum of my proposals written
+    uint public maxIndex;
+
     //The address of the admin of the contract
     address public ownerOfVotes;
 
-    //the variable status contains the state of the worflow where I am !!!!!!!!
+    //the variable status contains the state of the workflow where I am !
     WorkflowStatus status = WorkflowStatus.RegisteringVoters;
 
     constructor() public{
@@ -62,6 +63,8 @@ contract Voting is Ownable{
         require(status == _expectedStatus, "This workflow status is not the one expected");
         _;
     }
+
+    //*********************** list of the functions asked
 
     /**
        element: function
@@ -79,6 +82,7 @@ contract Voting is Ownable{
         emit VoterRegistered(_voterAddress);
     }
 
+
     /**
        element: function
        title: startProposalRegistrationSession
@@ -94,6 +98,7 @@ contract Voting is Ownable{
         emit ProposalsRegistrationStarted();
     }
 
+
     /**
        element: function
        title: registerProposal
@@ -103,6 +108,7 @@ contract Voting is Ownable{
     isRightWorkflowStatus(WorkflowStatus.ProposalsRegistrationStarted) public{
 
         proposals[_proposalId].description = _description;
+        maxIndex = maxIndex + 1;
 
         //no need to init here, proposals[_proposalId].voteCount = 0;, automatically done
 
@@ -125,6 +131,7 @@ contract Voting is Ownable{
         emit ProposalsRegistrationEnded();
     }
 
+
     /**
         element: function
         title: VotingSessionStarted
@@ -138,6 +145,7 @@ contract Voting is Ownable{
         emit WorkflowStatusChange(WorkflowStatus.ProposalsRegistrationEnded, status);
         emit VotingSessionStarted();
     }
+
 
     /**
         element: function
@@ -157,6 +165,7 @@ contract Voting is Ownable{
         voters[_voter].votedProposalId = _proposalId;
     }
 
+
     /**
         element: function
         title: EndVotingSession
@@ -173,26 +182,17 @@ contract Voting is Ownable{
 
 
     /**
-            element: function
-            title: EndVotingSession
-            description: close the session of vote
-        */
+        element: function
+        title: tallyVotes
+        description: Count the votes to determine the proposal ID with maximum of votes
+    */
     function tallyVotes() public{
 
         //we initialise the highest vote
         uint winningVoteCount = 0;
 
-        //require(bytes(proposals[_proposalId].description).length != 0, "The ID of the proposal is not found!");
-
-        //Donc t'as 2 possibilités pour ton problème,
-        //Soit tu retires ton mapping et tu fais un tableau de proposals, de cette façon t'as pas besoin de conserver un index.
-        //Soit tu gardes ton mapping, et tu dois créer une variable d'état qui conserve l'index maximum et que tu dois incrémenter toi meme dans le code.
-        //Pour ma part la solution la plus otpimale c'est la 1ere
-
         //We loop on the mapping of proposals
-        //for(uint pos = 0; pos < bytes(proposals[Proposal].description).length; pos++){
         for(uint pos = 0; pos < maxIndex ; pos++){
-
 
             //We search the max
             if (proposals[pos].voteCount > winningVoteCount){
